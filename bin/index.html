@@ -30,7 +30,7 @@
 			console.info(obj);
 		}
 	
-		function playerLoaded() {
+		function onPlayerLoaded() {
 			var player = document.getElementById('XyTestPlayer');
 			if (player) {
 				player.setUrl('http://demo.vod.u.00cdn.com/FLV/big_buck_bunny_2500kbps_720p.flv');
@@ -45,6 +45,9 @@
 			}
 		}
 
+		function onMetaData(metadata) {
+			console.info(metadata);
+		}
 
 	</script>
 	<style>

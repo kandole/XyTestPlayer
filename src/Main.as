@@ -128,7 +128,7 @@ package
 				ExternalInterface.addCallback("play", playEx);
 				ExternalInterface.addCallback("stop", stopEx);
 				
-				ExternalInterface.call("playerLoaded");
+				ExternalInterface.call("onPlayerLoaded");
 			}
 			
 		}
@@ -448,10 +448,12 @@ package
         {
 			_infoQueue.netStatus += "\n\t" + log('onMetaData');
 			var startTick:Number = (new Date).getTime();
+			var md:Object = {};
 			if (metadata) {
 				var metaDataQueue:Array = [];
 				for (var key:String in metadata) {
 					metaDataQueue.push(key + ': ' + metadata[key]);
+					md[key] = metadata[key];
 					//trace(key + ': ' + metadata[key]);
 					//if (key.toLocaleLowerCase() == "framerate") {
 						//// 设定视频实际的帧率
@@ -468,6 +470,9 @@ package
 				}
 			}
 			
+			if (ExternalInterface.available) {
+				ExternalInterface.call("onMetaData", md);
+			}
 
 			trace('[onMetaData] ' + ((new Date).getTime() - startTick) + ', time: ' + (new Date).getTime());
 			

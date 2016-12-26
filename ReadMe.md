@@ -1,6 +1,7 @@
 # XyTestPlayer
 
 版本：v1.3.0
+
 本播放器用于测试直播或点播的各项指标，包括：
 - 首屏
 - FPS 10s/30s
@@ -24,8 +25,10 @@
 	停止
 
 ### Event
-- playerLoaded
-	播放器初始化完毕调用
+- onPlayerLoaded
+	播放器初始化完毕时调用
+- onMetaData
+	播放器获取metadata时调用
 
 ### Demo
 参看bin/index.html
