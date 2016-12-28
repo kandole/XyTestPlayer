@@ -31,15 +31,27 @@
 		}
 	
 		function onPlayerLoaded() {
-			var player = document.getElementById('XyTestPlayer');
+			player = document.getElementById('XyTestPlayer');
 			if (player) {
+
+				// setInterval(function() {
+				// 	console.log('status: ' + player.getStatus());
+				// }, 50);
+				console.log('status: ' + player.getStatus());
 				player.setUrl('http://demo.vod.u.00cdn.com/FLV/big_buck_bunny_2500kbps_720p.flv');
 				player.setBufferTime(1.5);
 				player.setPlayDuration(10);
+				console.log('isPlaying: ' + player.isPlaying());
 				player.play();
-
+				console.log('isPlaying: ' + player.isPlaying());
+				setTimeout(function () {
+					console.log('metadata: ' + player.getMetaData());
+				}, 200)
+				
+				console.log('status: ' + player.getStatus());
 				setTimeout(function() {
 					player.stop();
+					console.log('isPlaying: ' + player.isPlaying());
 					alert(player.printLog());
 				}, 5000);
 			}

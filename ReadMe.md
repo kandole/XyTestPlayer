@@ -23,6 +23,12 @@
 	播放
 - stop():void
 	停止
+- isPlaying():Boolean
+	是否已开始播放
+- getMetaData():String
+	返回metadata的JSON格式字符串，在没有触发metadata事件前或停止后是空Object
+- getStatus():String
+	返回播放器、NetConnection、NetStream的当前状态，JSON格式字符串
 
 ### Event
 - onPlayerLoaded

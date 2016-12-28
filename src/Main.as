@@ -68,23 +68,28 @@ package
 		
 		private var _logMsg:String;
 		private var _fileRefer:FileReference;
+		private var _currentStatus:Object = {
+				level: "status",
+				code: "Player.Init"
+		};
+		private var _metadata:Object = {};
 		
 		private var _nameMapping:Object = {
-			"firstScreen": '首屏(ms)',
+			"firstScreen": 'FirstScreen(ms)',
 			"metaData": 'MetaData',
 			"bufferTime": 'BufferTime(s)',
 			"bufferLength": 'BufferLength(s)',
 			"bytesLoaded": "BytesLoaded(b)",
 			"bytesTotal": "BytesTotal(b)",
 			"fps": "FPS",
-			"avgFps": "10s内平均FPS",
-			"avgFps_30": "30s内平均FPS",
-			"totalInterruptCount": '总卡顿次数',
-			"totalInterruptTime": '总卡顿时长(ms)',
-			"avgInterruptCount": '10s内卡顿次数',
-			"avgInterruptTime": '10s内卡顿时长(ms)',
-			"avgInterruptCount_30": '30s内卡顿次数',
-			"avgInterruptTime_30": '30s内卡顿时长(ms)',
+			"avgFps": "avgFPS/10s", // 10s内平均FPS
+			"avgFps_30": "avgFPS/30s", // 30s内平均FPS
+			"totalInterruptCount": 'totalInterruptCount', // 总卡顿次数
+			"totalInterruptTime": 'totalInterruptTime(ms)', // 总卡顿时长(ms)
+			"avgInterruptCount": 'avgInterruptCount/10s', // 10s内卡顿次数
+			"avgInterruptTime": 'avgInterruptTime/10s(ms)', // 10s内卡顿时长(ms)
+			"avgInterruptCount_30": 'avgInterruptCount/30s', // 30s内卡顿次数
+			"avgInterruptTime_30": 'avgInterruptTime/30s(ms)', // 30s内卡顿时长(ms)
 			"netStatus": "NetStatus"
 		};
 		
@@ -103,7 +108,7 @@ package
 			stage.scaleMode = StageScaleMode.NO_SCALE;
 //			stage.align = StageAlign.LEFT;
 			stage.align = StageAlign.TOP_LEFT;
-			
+
 			initParams();
 
 			_vFLV = new Video();
@@ -127,6 +132,9 @@ package
 				ExternalInterface.addCallback("printLog", printLog);
 				ExternalInterface.addCallback("play", playEx);
 				ExternalInterface.addCallback("stop", stopEx);
+				ExternalInterface.addCallback("isPlaying", isPlaying);
+				ExternalInterface.addCallback("getMetaData", getMetaData);
+				ExternalInterface.addCallback("getStatus", getStatus);
 				
 				ExternalInterface.call("onPlayerLoaded");
 			}
@@ -169,10 +177,30 @@ package
 		{
 			stopVideo(null);
 		}
+		
+		public function isPlaying():Boolean
+		{
+			return _stopBtn.enabled;
+		}
+		
+		public function getStatus():String
+		{
+			return JSON.stringify(_currentStatus);
+		}
+		
+		public function getMetaData():String
+		{
+			return JSON.stringify(_metadata);
+		}
 		// -↑- public interface -↑-
 		
 		private function initParams():void
 		{
+			_currentStatus = {
+				level: "status",
+				code: "Player.Init"
+			};
+			_metadata = {};
 			_infoQueue = {
 				"firstScreen": 0,
 				"metaData": "No MetaData!",
@@ -283,6 +311,11 @@ package
 		{
 			_infoQueue.netStatus += "\n\t" + log(event.info.level + ': ' + event.info.code);
 
+			_currentStatus = {
+				level: event.info.level,
+				code: event.info.code
+			};
+			
 			switch (event.info.level) {
 				case "error":
 					if (_logLbl) {
@@ -448,6 +481,10 @@ package
         {
 			_infoQueue.netStatus += "\n\t" + log('onMetaData');
 			var startTick:Number = (new Date).getTime();
+			_currentStatus = {
+				level: "status",
+				code: "Player.MetaData"
+			};
 			var md:Object = {};
 			if (metadata) {
 				var metaDataQueue:Array = [];
@@ -470,6 +507,7 @@ package
 				}
 			}
 			
+			_metadata = md;
 			if (ExternalInterface.available) {
 				ExternalInterface.call("onMetaData", md);
 			}
