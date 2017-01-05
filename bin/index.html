@@ -29,8 +29,12 @@
 		function loadCallback(obj) {
 			console.info(obj);
 		}
-	
+
 		function onPlayerLoaded() {
+			player = document.getElementById('XyTestPlayer');
+		}
+	
+		function onPlayerLoaded1() {
 			player = document.getElementById('XyTestPlayer');
 			if (player) {
 
@@ -65,13 +69,17 @@
 	<style>
 		html, body { height:100%; overflow:hidden; }
 		body { margin:0; }
+
+		#control-bar { margin: 20px 0 0 20px;}
 	</style>
 </head>
 <body>
+	<div id="control-bar" style="display:none;">
+		<button>Do test</button>
+	</div>
 	<div id="altContent">
 		<h1>XyTestPlayer</h1>
 		<p><a href="http://www.adobe.com/go/getflashplayer">Get Adobe Flash player</a></p>
 	</div>
-
 </body>
 </html>

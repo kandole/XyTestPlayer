@@ -53,6 +53,7 @@
   <!-- SWC Libraries -->
   <libraryPaths>
     <element path="lib\fl_components.swc" />
+    <element path="lib\XYVPLoader.swc" />
   </libraryPaths>
   <!-- External Libraries -->
   <externalLibraryPaths>

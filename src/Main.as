@@ -1,5 +1,6 @@
 package
 {
+	import fl.data.DataProvider;
 	import flash.display.StageAlign;
 	import flash.display.StageScaleMode;
 	import flash.display.Sprite;
@@ -7,6 +8,7 @@ package
 	import flash.events.TimerEvent;
 	import flash.events.SecurityErrorEvent;
 	import flash.events.ProgressEvent;
+	import flash.events.ErrorEvent;
 	import flash.events.IOErrorEvent;
 	import flash.net.FileReference;
 	import mx.core.TextFieldAsset;
@@ -19,9 +21,14 @@ package
 	import fl.controls.Button;
 	import fl.controls.TextInput;
 	import fl.controls.UIScrollBar;
+	import fl.controls.ComboBox;
+	import fl.controls.CheckBox;
 	import flash.events.MouseEvent;
 	import flash.events.NetStatusEvent;
 	import flash.external.ExternalInterface;
+	
+	import com.xl.xyvp.loader.XYVPLoader;
+	import com.xl.xyvp.XYVPEvent;
 
 	import Utils;
 
@@ -31,10 +38,18 @@ package
 	 */
 	public class Main extends Sprite 
 	{
+		private var XYStream:Class;
+		
+		private var _loader:XYVPLoader;
 		private var _vFLV:Video;
 		private var _nc:NetConnection;
-		private var _ns:NetStream;
+		private var _ns:*;
 		private var _url:String = "";
+		private var _rtmpPath:String = "";
+		private var _rtmpFile:String = "";
+		private var _isLoadOK:Boolean = false;
+		private var _sdkCache:Object = {};
+		private var _isRtmp:Boolean = false;
 		
 		private var _urlText:TextInput;
 		private var _openBtn:Button;
@@ -48,6 +63,9 @@ package
 		private var _playDurationLbl:TextField;
 		private var _playDurationIpt:TextInput;
 		private var _downLogBtn:Button;
+		private var _sdkLbl:TextField;
+		private var _sdkList:ComboBox;
+		private var _useCacheChk:CheckBox;
 		
 		private var _fpStartTick:Number;
 		//private var _fpEndTick:Number;
@@ -90,9 +108,14 @@ package
 			"avgInterruptTime": 'avgInterruptTime/10s(ms)', // 10s内卡顿时长(ms)
 			"avgInterruptCount_30": 'avgInterruptCount/30s', // 30s内卡顿次数
 			"avgInterruptTime_30": 'avgInterruptTime/30s(ms)', // 30s内卡顿时长(ms)
-			"netStatus": "NetStatus"
+			"netStatus": "NetStatus",
+			"error": "Error"
 		};
-		
+		private var _sdkItems:Array = [
+			{label:'no', data: 'none'},
+			{label:'live-kernal', data: 'http://fcrc.video.p2cdn.com/kernal/XYVP.png'},
+			{label:'vod-kernal', data: 'http://fcrc.video.p2cdn.com/kernal/XYVP.png'}
+		];
 
 		public function Main() 
 		{
@@ -133,6 +156,10 @@ package
 				ExternalInterface.addCallback("play", playEx);
 				ExternalInterface.addCallback("stop", stopEx);
 				ExternalInterface.addCallback("isPlaying", isPlaying);
+				ExternalInterface.addCallback("getSDKList", getSDKList);
+				ExternalInterface.addCallback("setSDK", setSDK);
+				ExternalInterface.addCallback("usedSDK", usedSDK);
+				ExternalInterface.addCallback("cacheSDK", cacheSDK);
 				ExternalInterface.addCallback("getMetaData", getMetaData);
 				ExternalInterface.addCallback("getStatus", getStatus);
 				
@@ -183,6 +210,36 @@ package
 			return _stopBtn.enabled;
 		}
 		
+		public function getSDKList():String
+		{
+			return JSON.stringify(_sdkItems);
+		}
+		
+		public function setSDK(index:Number = 0):Boolean
+		{
+			if (!isNaN(index) && !isPlaying() && _sdkItems[index] && _sdkList) {
+				_sdkList.selectedIndex = index;
+				return true;
+			} else {
+				return false;
+			}
+		}
+		
+		public function usedSDK():Number
+		{
+			return (_sdkList) ? _sdkList.selectedIndex : 0;
+		}
+		
+		public function cacheSDK(value:Boolean = true):Boolean
+		{
+			if (!isPlaying() && _useCacheChk) {
+				_useCacheChk.selected = value;
+				return true;
+			} else {
+				return false;
+			}
+		}
+		
 		public function getStatus():String
 		{
 			return JSON.stringify(_currentStatus);
@@ -193,6 +250,17 @@ package
 			return JSON.stringify(_metadata);
 		}
 		// -↑- public interface -↑-
+		
+		private function errorHandler(event:ErrorEvent):void
+		{
+			var errMsg:String = '[' + event.errorID + ']' + event.type;
+			if (ExternalInterface.available) {
+				ExternalInterface.call('onError', errMsg);
+			}
+			_infoQueue.error = errMsg;
+			addInfo("error");
+			printInfo();
+		}
 		
 		private function initParams():void
 		{
@@ -217,7 +285,8 @@ package
 				"avgInterruptTime": 0,
 				"avgInterruptCount_30": 0,
 				"avgInterruptTime_30": 0,
-				"netStatus": ""
+				"netStatus": "",
+				"error": ""
 			};
 			_bufferEmptyQueue = new Array;
 			_bufferFullQueue = new Array;
@@ -289,6 +358,25 @@ package
 			_downLogBtn.width = 80;
 			_downLogBtn.addEventListener(MouseEvent.CLICK, downloadLog);
 			
+			_sdkLbl = new TextField();
+			_sdkLbl.text = '使用SDK:';
+			_sdkLbl.x = _downLogBtn.x + _downLogBtn.width + 10;
+			_sdkLbl.y = _downLogBtn.y;
+			_sdkLbl.width = 60;	
+			
+			_sdkList = new ComboBox();
+			_sdkList.dataProvider = new DataProvider(_sdkItems);
+			_sdkList.x = _sdkLbl.x + _sdkLbl.width + 5;
+			_sdkList.y = _sdkLbl.y;
+			_sdkList.width = 100;
+			_sdkList.addEventListener(Event.CHANGE, sdkChangeHandler);
+			
+			_useCacheChk = new CheckBox();
+			_useCacheChk.label = '缓存SDK库';
+			_useCacheChk.selected = true;
+			_useCacheChk.x = _sdkList.x + _sdkList.width + 10;
+			_useCacheChk.y = _sdkList.y;			
+
 			addChild(_urlText);
 			addChild(_openBtn);
 			addChild(_stopBtn);
@@ -298,6 +386,9 @@ package
 			addChild(_playDurationLbl);
 			addChild(_playDurationIpt);
 			addChild(_downLogBtn);
+			addChild(_sdkLbl);
+			addChild(_sdkList);
+			addChild(_useCacheChk);
 			
 			_fileRefer = new FileReference();
 			_fileRefer.addEventListener(Event.OPEN, downLogOpenHandler);
@@ -326,8 +417,12 @@ package
 			
 			switch (event.info.code) {
                 case "NetConnection.Connect.Success":
+					trace('----2----connected: ' + _nc.connected);
                     connectStream();
                     break;
+				case "NetConnection.Connect.Failed":
+					trace("NetConnection.Connect.Failed");
+					break;
                 case "NetStream.Play.StreamNotFound":
                     trace("Stream not found: " + _url);
                     break;
@@ -406,12 +501,18 @@ package
 		private function securityErrorHandler(event:SecurityErrorEvent):void
 		{
 			trace("securityErrorHandler: " + event.errorID);
+			errorHandler(event);
 		}
 
 		private function connectStream():void {
+			if (!_isLoadOK) {
+				trace('load failed!');
+				return;
+			}
+			
 			var startTick:Number = (new Date).getTime();
             addChild(_vFLV);
-            _ns = new NetStream(_nc);
+            _ns = new XYStream(_nc);
             _ns.addEventListener(NetStatusEvent.NET_STATUS, netStatusHandler);
 			var bt:Number = Number(_bufferTimeIpt.text);
 			if (bt >= 0.1 && bt <= 120) {
@@ -425,8 +526,8 @@ package
 			_ns.client = clientObject;
             _vFLV.attachNetStream(_ns);
             
-			if (_url.toLocaleLowerCase().slice(0, 4) == "rtmp") {
-				_ns.play(_url.slice(_url.lastIndexOf("/") + 1));
+			if (_isRtmp) {
+				_ns.play(_rtmpFile);
 			} else {
 				_ns.play(_url);
 			}
@@ -560,22 +661,61 @@ package
 
         private function openVideo(event:MouseEvent):void
         {
+			trace('openVideo...');
+			renderInfoArea();
+			clearLog();
         	_url = _urlText.text;
-			_fpStartTick = (new Date).getTime();
-        	
-			_nc = new NetConnection();
-			_nc.client = this;
-			_nc.addEventListener(NetStatusEvent.NET_STATUS, netStatusHandler);
-			_nc.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
-			
 			if (_url.toLocaleLowerCase().slice(0, 4) == "rtmp") {
-				_nc.connect(_url.slice(0, _url.lastIndexOf("/") + 1));
-			} else {
-				_nc.connect(null);
+				_isRtmp = true;
+				_rtmpPath = _url.slice(0, _url.lastIndexOf("/") + 1);
+				_rtmpFile = _url.slice(_url.lastIndexOf("/") + 1);
+				trace('_rtmpPath: ' + _rtmpPath + ', _rtmpFile: ' + _rtmpFile);
+			}
+        	
+			if (!_nc) {
+				_nc = new NetConnection();
+				trace('----0----connected: ' + _nc.connected);
+				_nc.client = this;
+				_nc.addEventListener(NetStatusEvent.NET_STATUS, netStatusHandler);
+				_nc.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
 			}
 			
+			if (_sdkList.selectedItem && _sdkList.selectedItem.data != 'none') {
+				trace('sdk: ' + _sdkList.selectedItem.data);
+				if (_useCacheChk.selected && _sdkCache[_sdkList.selectedItem.label]) {
+					trace('use cache: ' + _sdkList.selectedItem.label);
+					loadSuccess(new XYVPEvent(XYVPEvent.LOAD_SUCC, {"StreamClass":_sdkCache[_sdkList.selectedItem.label]}));
+				} else {
+					var type:String = _sdkList.selectedItem.label.split('-')[0] == 'live' ? XYVPLoader.LIVE : XYVPLoader.VOD;
+					try {
+						_loader = new XYVPLoader();
+						_loader.addEventListener(XYVPEvent.LOAD_SUCC, loadSuccess);
+						_loader.addEventListener(XYVPEvent.LOAD_FAIL, loadFailed);
+						_loader.load(_sdkList.selectedItem.data, type);
+					} catch(event: ErrorEvent) {
+						trace('loadXYVP error');
+						errorHandler(event);
+						return;
+					}
+				}
+			} else {
+				_fpStartTick = (new Date).getTime();
+				_isLoadOK = true;
+				XYStream = NetStream;
+				trace('----0.5----connected: ' + _nc.connected);
+				if (_isRtmp) {
+					_nc.connect(_rtmpPath);
+				} else {
+					trace('connecting...');
+					_nc.connect(null);
+				}
+				trace('----1----connected: ' + _nc.connected);
+			}
+				
 			_openBtn.enabled = false;
 			_stopBtn.enabled = true;
+			_sdkList.enabled = false;
+			_useCacheChk.enabled = false;
 		
 			if (_playDurationIpt) {
 				var duration:Number = isNaN(parseInt(_playDurationIpt.text)) ? 0 : parseInt(_playDurationIpt.text);				
@@ -586,19 +726,26 @@ package
 					_autoStopTimer.start();
 				}	
 			}
-			
-			renderInfoArea();
         
 			trace('[openVideo] ' + ((new Date).getTime() - _fpStartTick) + ', time: ' + (new Date).getTime());
 		}
 
 		private function stopVideo(event:MouseEvent):void
 		{
-			_ns.close();
+			trace('stopVideo...');
+			if (_loader) {
+				_loader.removeEventListener(XYVPEvent.LOAD_SUCC, loadSuccess);
+				_loader.removeEventListener(XYVPEvent.LOAD_FAIL, loadFailed);
+				_loader = null;
+			}
+			if (_ns) {
+				_ns.close();
+				_ns.removeEventListener(NetStatusEvent.NET_STATUS, netStatusHandler);
+				_ns = null;
+			}
+			
 			initParams();
-			_nc.removeEventListener(NetStatusEvent.NET_STATUS, netStatusHandler);
-			_nc.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
-			_ns.removeEventListener(NetStatusEvent.NET_STATUS, netStatusHandler);
+			
 			//_vFLV.removeEventListener(Event.EXIT_FRAME, fpsCountHandler);
 			if (_autoStopTimer) {
 				if (_autoStopTimer.running) {
@@ -612,6 +759,27 @@ package
 			_logTimer.stop();
 			_openBtn.enabled = true;
 			_stopBtn.enabled = false;
+			_sdkList.enabled = true;
+			_useCacheChk.enabled = true;
+		}
+		
+		private function loadSuccess(event:XYVPEvent):void {
+			trace('loadSuccess');
+			_isLoadOK = true;
+			XYStream = event.data.StreamClass as Class;
+			
+			if (_useCacheChk.selected) {
+				_sdkCache[_sdkList.selectedItem.label] = XYStream;
+			}
+			_fpStartTick = (new Date).getTime();
+			_nc.connect(null);
+		}
+		
+		private function loadFailed(event:XYVPEvent):void {
+			trace('loadFailed: ' + event.data.code);
+			_isLoadOK = false;
+			var errEvt:ErrorEvent = new ErrorEvent('XYVPLoader.Failed', false, false, '', event.data.code);
+			errorHandler(errEvt);
 		}
 		
 		private function downloadLog(event:MouseEvent):void
@@ -643,9 +811,15 @@ package
 		
 		private function downLogIOErrorHandler(event:IOErrorEvent):void
 		{
-			trace('downLogIOErrorHandler: ' + event.errorID);
+			trace('downLogIOErrorHandler: ' + event.type);
+			errorHandler(event);
 		}
 
+		private function sdkChangeHandler(event:Event):void
+		{
+			trace('sdkChangeHandler');
+		}
+		
 		private function updateProgress(timerEvent:TimerEvent):void
 		{
 			var fps:Number = _ns.currentFPS;
@@ -762,6 +936,12 @@ package
 		//}
 		
 
+		private function clearLog():void
+		{
+			_logMsg = "";
+			printInfo();
+		}
+		
 		private function cleanInfo():void
 		{
 			_logMsg = "";
