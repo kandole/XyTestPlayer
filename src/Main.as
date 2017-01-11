@@ -1,6 +1,7 @@
 package
 {
 	import fl.data.DataProvider;
+	import flash.utils.*;
 	import flash.display.StageAlign;
 	import flash.display.StageScaleMode;
 	import flash.display.Sprite;
@@ -127,6 +128,15 @@ package
 		{
 			removeEventListener(Event.ADDED_TO_STAGE, init);
 			// entry point
+			UncaughtErrorMonitor.init(loaderInfo, function(obj:Object):void {
+				if (ExternalInterface.available) {
+					ExternalInterface.call('onError', obj);
+				}
+			});
+			
+			//setTimeout(function():void {
+				//throw new Error('testError', 89898989);
+			//}, 5000);
 
 			stage.scaleMode = StageScaleMode.NO_SCALE;
 //			stage.align = StageAlign.LEFT;
@@ -162,7 +172,8 @@ package
 				ExternalInterface.addCallback("cacheSDK", cacheSDK);
 				ExternalInterface.addCallback("getMetaData", getMetaData);
 				ExternalInterface.addCallback("getStatus", getStatus);
-				
+				ExternalInterface.addCallback("getStatus", getStatus);
+				ExternalInterface.addCallback("getInfo", getInfo);
 				ExternalInterface.call("onPlayerLoaded");
 			}
 			
@@ -248,6 +259,11 @@ package
 		public function getMetaData():String
 		{
 			return JSON.stringify(_metadata);
+		}
+		
+		public function getInfo():String
+		{
+			return JSON.stringify(_infoQueue);
 		}
 		// -↑- public interface -↑-
 		
