@@ -100,7 +100,7 @@ package
 			"netStatus": "NetStatus", "error": "Error"};
 		private var _sdkItems:Array = [
 			{label: 'none', data: 'none', type: 'none', url: 'http://demo.vod.u.00cdn.com/FLV/big_buck_bunny_750kbps_480p.flv'}, 
-			{label: 'kernal-live', data: 'http://fcrc.video.p2cdn.com/kernal-test/XYVP.png', type: 'live', url: 'http://pullsdk.test.live.00cdn.com/live/stream1.flv'}, 
+			{label: 'kernal-live', data: 'http://fcrc.video.p2cdn.com/kernal-live/XYVP.png', type: 'live', url: 'http://pullsdk.test.live.00cdn.com/live/stream1.flv'}, 
 			{label: 'kernal-vod', data: 'http://fcrc.video.p2cdn.com/kernal-vod/XYVP.png', type: 'vod', url: 'http://demo.vod.u.00cdn.com/FLV/big_buck_bunny_750kbps_480p.flv'}, 
 			{label: 'iqiyi-vod', data: 'http://local.flash-iqiyi.com/XYVP/release/XYVP.png', type: 'vod', url: 'F28BB86E3A4F73B0D52400CF5CD6709E|39192505'}
 		];
