@@ -7,32 +7,74 @@
 	
 	<script src="js/swfobject.js"></script>
 	<script>
-		var flashvars = {
-		};
-		var params = {
-			menu: "false",
-			scale: "noScale",
-			allowFullscreen: "true",
-			allowScriptAccess: "always",
-			bgcolor: "",
-			wmode: "direct" // can cause issues with FP settings & webcam
-		};
-		var attributes = {
-			id:"XyTestPlayer"
-		};
-		swfobject.embedSWF(
-			"XyTestPlayer.swf", 
-			"altContent", "100%", "100%", "10.0.0", 
-			"expressInstall.swf", 
-			flashvars, params, attributes, loadCallback);
+	
+		function loadSWF() {
+			
+			if (player) {
+				console.log('removeSWF');
+				swfobject.removeSWF(player.id);
 
-		function loadCallback(obj) {
+				var swfContainer = document.createElement('div');
+				swfContainer.id = 'altContent';
+				document.getElementsByTagName('body')[0].appendChild(swfContainer);
+			}
+
+			console.log('loadSWF');
+
+			var flashvars = {
+			};
+			var params = {
+				menu: "false",
+				scale: "noScale",
+				allowFullscreen: "true",
+				allowScriptAccess: "always",
+				bgcolor: "",
+				wmode: "direct" // can cause issues with FP settings & webcam
+			};
+			var attributes = {
+				id:"XyTestPlayer"
+			};
+			swfobject.embedSWF(
+				"XyTestPlayer.swf", 
+				"altContent", "100%", "100%", "10.0.0", 
+				"expressInstall.swf", 
+				flashvars, params, attributes, loadFinished);
+		}
+		loadSWF();
+
+		function loadFinished(obj) {
 			console.info(obj);
 		}
-
+		
+		var isInit = false;
+		var player;
+		var sdkSelect;
 		function onPlayerLoaded() {
 			player = document.getElementById('XyTestPlayer');
-		}
+			
+			if (!isInit) {
+				isInit = true;
+				var sdkList = JSON.parse(player.getSDKList());
+				var sdkOptions = '';
+				sdkList.forEach(function(item, index) {
+					sdkOptions += '<option value="' + item.data + '" data-index="' + index + '" data-url="' + item.url + '">' + item.label + '</option>';
+				});
+				sdkSelect = document.getElementById('sdk');
+				sdkSelect.innerHTML = sdkOptions;
+				sdkSelect.addEventListener('change', function() {
+					console.log('change');
+					if (!player.isPlaying()) {
+						loadSWF();
+					} else {
+						alert('正在播放中，请先停止播放！');
+					}
+				});
+			}
+			
+			var selectedOption = sdkSelect.selectedOptions[0];
+			player.setSDK(selectedOption.dataset.index);
+			player.setUrl(selectedOption.dataset.url);
+		}	
 	
 		function onPlayerLoaded1() {
 			player = document.getElementById('XyTestPlayer');
@@ -74,12 +116,14 @@
 		html, body { height:100%; overflow:hidden; }
 		body { margin:0; }
 
-		#control-bar { margin: 20px 0 0 20px;}
+		.control-bar { margin: 10px 20px 0 }
 	</style>
 </head>
 <body>
-	<div id="control-bar" style="display:none;">
-		<button>Do test</button>
+	<div class="control-bar">
+		<label for="sdk">SDK: </label>
+		<select id="sdk">
+		</select>
 	</div>
 	<div id="altContent">
 		<h1>XyTestPlayer</h1>
