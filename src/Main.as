@@ -290,8 +290,6 @@ package
 		
 		private function initParams():void
 		{
-			_sdkURL = 'none';
-			_sdkType = 'none';
 			_currentStatus = {level: "status", code: "Player.Init"};
 			_metadata = {};
 			_infoQueue = {"firstScreen": 0, "metaData": "No MetaData!", "bufferTime": 0, "bufferLength": 0, "bytesLoaded": 0, "bytesTotal": 0, "fps": 0, "avgFps": 0, "avgFps_30": 0, "totalInterruptCount": 0, "totalInterruptTime": 0, "avgInterruptCount": 0, "avgInterruptTime": 0, "avgInterruptCount_30": 0, "avgInterruptTime_30": 0, "netStatus": "", "error": ""};
@@ -390,106 +388,105 @@ package
 			
 			switch (event.info.level)
 			{
-			case "error": 
-				if (_logLbl)
-				{
-					_logLbl.htmlText += "\n" + event.info.code + "\n";
-				}
-				break;
+				case "error": 
+					if (_logLbl)
+					{
+						_logLbl.htmlText += "\n" + event.info.code + "\n";
+					}
+					break;
 			}
-			trace('NetStatus: ' + event.info.code);
 			switch (event.info.code)
 			{
-			case "NetConnection.Connect.Success": 
-				trace('----2----connected: ' + _nc.connected);
-				connectStream();
-				break;
-			case "NetConnection.Connect.Failed": 
-				trace("NetConnection.Connect.Failed");
-				break;
-			case "NetStream.Play.StreamNotFound": 
-				trace("Stream not found: " + _url);
-				break;
-			case "NetStream.Play.Start": 
-				//trace("play start");
-				_playTimer.start();
-				_logTimer.start();
-				break;
-			case "NetStream.Buffer.Full": 
-				if (!_isFirstBufferFull)
-				{ // 首屏
-					_isFirstBufferFull = true;
-					_videoStartTick = (new Date).getTime();
-					var duration:Number = _videoStartTick - _fpStartTick;
-					_infoQueue.firstScreen = duration;
-					trace("first buffer full: " + duration + ', time: ' + _videoStartTick);
-				}
-				else
-				{
-					var curTick:Number = (new Date).getTime();
-					
-					var fullLen:Number = _bufferFullQueue.length;
-					var emptyLen:Number = _bufferEmptyQueue.length;
-					
-					if (emptyLen > 0)
+				case "NetConnection.Connect.Success": 
+					trace('----2----connected: ' + _nc.connected);
+					connectStream();
+					break;
+				case "NetConnection.Connect.Failed": 
+					trace("NetConnection.Connect.Failed");
+					break;
+				case "NetStream.Play.StreamNotFound": 
+					trace("Stream not found: " + _url);
+					break;
+				case "NetStream.Play.Start": 
+					//trace("play start");
+					_playTimer.start();
+					_logTimer.start();
+					break;
+				case "NetStream.Buffer.Full": 
+					if (!_isFirstBufferFull)
+					{ // 首屏
+						_isFirstBufferFull = true;
+						_videoStartTick = (new Date).getTime();
+						var duration:Number = _videoStartTick - _fpStartTick;
+						_infoQueue.firstScreen = duration;
+						trace("first buffer full: " + duration + ', time: ' + _videoStartTick);
+					}
+					else
 					{
-						if (fullLen + 1 != emptyLen)
-						{
-							trace('full + 1 != empty');
-							// buffer没有empty，再次full的情况，不能作为卡顿
-							return;
-						}
-						_bufferFullQueue.push(curTick);
-						fullLen = _bufferFullQueue.length;
-						var interruptCount:String = _bufferEmptyQueue.map(function(emptyTick:Number, index:Number, queue:Array):String
-						{
-							//trace("--a:" + Utils.number2Time(Math.floor((emptyTick - _videoStartTick) / 1000)));
-							return Utils.number2Time(Math.floor((emptyTick - _videoStartTick) / 1000));
-						}).join(', ');
-						_infoQueue.totalInterruptCount = emptyLen + " [" + interruptCount + "]";
+						var curTick:Number = (new Date).getTime();
 						
-						_interruptQueue[curTick] = curTick - _bufferEmptyQueue[emptyLen - 1];
+						var fullLen:Number = _bufferFullQueue.length;
+						var emptyLen:Number = _bufferEmptyQueue.length;
 						
-						if (fullLen > 0)
+						if (emptyLen > 0)
 						{
-							var totalTime:Number = 0;
-							var interruptArray:Array = [];
-							for (var i:int = 0; i < fullLen; i++)
+							if (fullLen + 1 != emptyLen)
 							{
-								totalTime += _interruptQueue[_bufferFullQueue[i]];
-								interruptArray.push(_interruptQueue[_bufferFullQueue[i]]);
+								trace('full + 1 != empty');
+								// buffer没有empty，再次full的情况，不能作为卡顿
+								return;
 							}
-							_infoQueue.totalInterruptTime = totalTime + ' [' + interruptArray.join(', ') + ']';
-							trace("==q: " + _infoQueue.totalInterruptTime);
+							_bufferFullQueue.push(curTick);
+							fullLen = _bufferFullQueue.length;
+							var interruptCount:String = _bufferEmptyQueue.map(function(emptyTick:Number, index:Number, queue:Array):String
+							{
+								//trace("--a:" + Utils.number2Time(Math.floor((emptyTick - _videoStartTick) / 1000)));
+								return Utils.number2Time(Math.floor((emptyTick - _videoStartTick) / 1000));
+							}).join(', ');
+							_infoQueue.totalInterruptCount = emptyLen + " [" + interruptCount + "]";
+							
+							_interruptQueue[curTick] = curTick - _bufferEmptyQueue[emptyLen - 1];
+							
+							if (fullLen > 0)
+							{
+								var totalTime:Number = 0;
+								var interruptArray:Array = [];
+								for (var i:int = 0; i < fullLen; i++)
+								{
+									totalTime += _interruptQueue[_bufferFullQueue[i]];
+									interruptArray.push(_interruptQueue[_bufferFullQueue[i]]);
+								}
+								_infoQueue.totalInterruptTime = totalTime + ' [' + interruptArray.join(', ') + ']';
+								trace("==q: " + _infoQueue.totalInterruptTime);
+							}
 						}
 					}
-				}
-				
-				//trace("Stream buffer full: " + _ns.bufferLength + ', ' + _ns.bufferTime);
-				
-				break;
-			case "NetStream.Buffer.Empty": 
-				var emptyTick:Number = (new Date).getTime();
-				
-				if (_bufferEmptyQueue.length == _bufferFullQueue.length)
-				{
-					_bufferEmptyQueue.push(emptyTick);
-				}
-				else
-				{
-					//_bufferEmptyQueue.splice(_bufferEmptyQueue.length - 1, 1, emptyTick);
-					// buffer没有full之前，再次empty的情况，不加入_bufferEmptyQueue
-					trace('no full empty+++++');
 					
-				}
-				trace("Stream buffer empty, empty: " + _bufferEmptyQueue.length + ', full: ' + _bufferFullQueue.length);
-				break;
-			case "NetStream.Video.DimensionChange": 
-				trace("_vFLV.width: " + _vFLV.videoWidth + ', _vFLV.height: ' + _vFLV.videoHeight);
-				setVideoSize(_vFLV.videoWidth, _vFLV.videoHeight);
-				break;
-			case "NetStream.Play.Stop": 
-				break;
+					//trace("Stream buffer full: " + _ns.bufferLength + ', ' + _ns.bufferTime);
+					
+					break;
+				case "NetStream.Buffer.Empty": 
+					var emptyTick:Number = (new Date).getTime();
+					
+					if (_bufferEmptyQueue.length == _bufferFullQueue.length)
+					{
+						_bufferEmptyQueue.push(emptyTick);
+					}
+					else
+					{
+						//_bufferEmptyQueue.splice(_bufferEmptyQueue.length - 1, 1, emptyTick);
+						// buffer没有full之前，再次empty的情况，不加入_bufferEmptyQueue
+						trace('no full empty+++++');
+						
+					}
+					trace("Stream buffer empty, empty: " + _bufferEmptyQueue.length + ', full: ' + _bufferFullQueue.length);
+					break;
+				case "NetStream.Video.DimensionChange": 
+					trace("_vFLV.width: " + _vFLV.videoWidth + ', _vFLV.height: ' + _vFLV.videoHeight);
+					setVideoSize(_vFLV.videoWidth, _vFLV.videoHeight);
+					break;
+				case "NetStream.Play.Stop": 
+					break;
 			}
 		}
 		
@@ -512,6 +509,7 @@ package
 			if (ExternalInterface.available) {
 				ExternalInterface.call('console.log', XYStream);
 			}
+			trace('XYStream: ' + XYStream);
 			_ns = new XYStream(_nc);
 			_ns.addEventListener(NetStatusEvent.NET_STATUS, netStatusHandler);
 			var bt:Number = Number(_bufferTimeIpt.text);
@@ -743,16 +741,16 @@ package
 		private function stopVideo(event:MouseEvent):void
 		{
 			trace('stopVideo...');
-			if (_loader) {
-				_loader.removeEventListener(XYVPEvent.LOAD_SUCC, loadSuccess);
-				_loader.removeEventListener(XYVPEvent.LOAD_FAIL, loadFailed);
-				_loader = null;
-			}
 			if (_ns)
 			{
 				_ns.close();
 				_ns.removeEventListener(NetStatusEvent.NET_STATUS, netStatusHandler);
 				_ns = null;
+			}
+			
+			if (_nc)
+			{
+				_nc.close();
 			}
 			
 			initParams();

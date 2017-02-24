@@ -63,11 +63,7 @@
 				sdkSelect.innerHTML = sdkOptions;
 				sdkSelect.addEventListener('change', function() {
 					console.log('change');
-					if (!player.isPlaying()) {
-						loadSWF();
-					} else {
-						alert('正在播放中，请先停止播放！');
-					}
+					loadSWF();
 				});
 			}
 			
@@ -124,6 +120,8 @@
 		<label for="sdk">SDK: </label>
 		<select id="sdk">
 		</select>
+		<button onclick="player.play()">play</button>
+		<button onclick="player.stop()">stop</button>
 	</div>
 	<div id="altContent">
 		<h1>XyTestPlayer</h1>
