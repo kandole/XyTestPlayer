@@ -137,12 +137,29 @@
 		function printLog() {
 			console.log(player.printLog());
 		}
+
+		function printSDKLog() {
+			if (player.printSDKLog) {
+				console.log(player.printSDKLog());
+			} else {
+				console.log('no log');
+			}
+		}
+		
+		function onLoadFc() {
+			var isChecked = document.getElementById('useFC').checked;
+			if (xyvp) {
+				xyvp.sdk().sdkUseFc(isChecked);
+			}	
+		}
+		
 	</script>
 	<style>
 		html, body { height:100%; overflow:hidden; }
 		body { margin:0; }
 
-		.control-bar { margin: 10px 20px 0 }
+		.control-bar { margin: 10px 20px 0; font-size: 14px; }
+		.control-row > * { vertical-align: middle; }
 		.control-row + .control-row { margin: 10px 0 0 }
 	</style>
 </head>
@@ -166,7 +183,10 @@
 			<label for="url">URL: </label>
 			<input id="url" style="width: 400px;">
 			<button onclick="setUrl()">setUrl</button>
+			<label for="useFC">使用喷泉码</label>
+			<input id="useFC" type="checkbox">
 			<button onclick="printLog()">printLog</button>
+			<button onclick="printSDKLog()">printSDKLog</button>
 		</div>
 	</fieldset>
 	</fieldset>

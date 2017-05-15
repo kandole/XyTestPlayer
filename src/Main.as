@@ -57,6 +57,8 @@ package
 		private var _stopBtn:Button;
 		private var _bufferTimeLbl:TextField;
 		private var _bufferTimeIpt:TextInput;
+		private var _bufferTimeMaxLbl:TextField;
+		private var _bufferTimeMaxIpt:TextInput;
 		private var _currentTimeTxt:TextField;
 		private var _versionTxt:TextField;
 		private var _logLbl:TextField;
@@ -101,6 +103,8 @@ package
 		private var _sdkItems:Array = [
 			{label: 'none', data: 'none', type: 'none', url: 'http://demo.vod.u.00cdn.com/FLV/big_buck_bunny_750kbps_480p.flv'}, 
 			{label: 'kernal-live', data: 'http://fcrc.video.p2cdn.com/kernal-live/XYVP.png', type: 'live', url: 'http://pullsdk.test.live.00cdn.com/live/stream1.flv'}, 
+			{label: 'external-live', data: 'http://fcrc.video.p2cdn.com/XYVPExternal/XYVP.png', type: 'live', url: 'http://pullsdk.test.live.00cdn.com/live/stream1.flv'}, 
+			//{label: 'external-live', data: 'http://local.flash-kernal.com/XYVPExternal/release/XYVP.png', type: 'live', url: 'http://pullsdk.test.live.00cdn.com/live/stream1.flv'}, 
 			{label: 'kernal-vod', data: 'http://fcrc.video.p2cdn.com/kernal-vod/XYVP.png', type: 'vod', url: 'http://demo.vod.u.00cdn.com/FLV/big_buck_bunny_750kbps_480p.flv'}, 
 			{label: 'iqiyi-vod', data: 'http://fcrc.video.p2cdn.com/iqiyi/XYVP.png', type: 'vod', url: 'F28BB86E3A4F73B0D52400CF5CD6709E|39192505'}
 		];
@@ -156,18 +160,19 @@ package
 				ExternalInterface.addCallback("printLog", printLog);
 				ExternalInterface.addCallback("play", playEx);
 				ExternalInterface.addCallback("stop", stopEx);
+				ExternalInterface.addCallback("pause", pauseEx);
+				ExternalInterface.addCallback("resume", resumeEx);
 				ExternalInterface.addCallback("isPlaying", isPlaying);
 				ExternalInterface.addCallback("getSDKList", getSDKList);
 				ExternalInterface.addCallback("setSDK", setSDK);
 				ExternalInterface.addCallback("usedSDK", usedSDK);
 				ExternalInterface.addCallback("getMetaData", getMetaData);
 				ExternalInterface.addCallback("getStatus", getStatus);
-				ExternalInterface.addCallback("getStatus", getStatus);
 				ExternalInterface.addCallback("getInfo", getInfo);
 				ExternalInterface.call("onPlayerLoaded");
 			}
 		
-			//setSDK(1);
+			setSDK(0);
 			//setUrl('http://pullsdk.test.live.00cdn.com/live/stream1.flv');
 		}
 		
@@ -209,6 +214,16 @@ package
 		public function stopEx():void
 		{
 			stopVideo(null);
+		}
+		
+		public function pauseEx():void
+		{
+			_ns.pause();
+		}
+		
+		public function resumeEx():void
+		{
+			_ns.resume();
 		}
 		
 		public function isPlaying():Boolean
@@ -334,14 +349,26 @@ package
 			
 			_bufferTimeIpt = new TextInput();
 			_bufferTimeIpt.text = "1";
-			_bufferTimeIpt.x = _bufferTimeLbl.x + _bufferTimeLbl.width + 5;
+			_bufferTimeIpt.x = _bufferTimeLbl.x + _bufferTimeLbl.width;
 			_bufferTimeIpt.y = _bufferTimeLbl.y;
 			_bufferTimeIpt.width = 30;
 			
+			_bufferTimeMaxLbl = new TextField();
+			_bufferTimeMaxLbl.text = 'BufferTimeMax:';
+			_bufferTimeMaxLbl.x = _bufferTimeIpt.x + _bufferTimeIpt.width + 10;
+			_bufferTimeMaxLbl.y = _bufferTimeIpt.y;
+			_bufferTimeMaxLbl.width = 85;
+			
+			_bufferTimeMaxIpt = new TextInput();
+			_bufferTimeMaxIpt.text = "1";
+			_bufferTimeMaxIpt.x = _bufferTimeMaxLbl.x + _bufferTimeMaxLbl.width;
+			_bufferTimeMaxIpt.y = _bufferTimeMaxLbl.y;
+			_bufferTimeMaxIpt.width = 30;
+			
 			_versionTxt = new TextField;
 			_versionTxt.text = 'v1.4.0';
-			_versionTxt.x = _bufferTimeIpt.x + _bufferTimeIpt.width + 5;
-			_versionTxt.y = _bufferTimeIpt.y;
+			_versionTxt.x = _bufferTimeMaxIpt.x + _bufferTimeMaxIpt.width + 5;
+			_versionTxt.y = _bufferTimeMaxIpt.y;
 			_versionTxt.width = 80;
 			
 			_playDurationLbl = new TextField();
@@ -368,6 +395,8 @@ package
 			addChild(_stopBtn);
 			addChild(_bufferTimeLbl);
 			addChild(_bufferTimeIpt);
+			addChild(_bufferTimeMaxLbl);
+			addChild(_bufferTimeMaxIpt);
 			addChild(_versionTxt);
 			addChild(_playDurationLbl);
 			addChild(_playDurationIpt);
@@ -409,8 +438,10 @@ package
 					break;
 				case "NetStream.Play.Start": 
 					//trace("play start");
+					Utils.formatMsg("play start");
 					_playTimer.start();
 					_logTimer.start();
+					trace('bufferTimeMax: ' + _ns.bufferTimeMax);
 					break;
 				case "NetStream.Buffer.Full": 
 					if (!_isFirstBufferFull)
@@ -522,6 +553,15 @@ package
 				_bufferTimeIpt.text = '1';
 				_ns.bufferTime = 1;
 			}
+			
+			var btm:Number = Number(_bufferTimeMaxIpt.text);
+			if (!isNaN(btm)) {
+				_ns.bufferTimeMax = btm;
+			} else {
+				_bufferTimeMaxIpt.text = '10';
+				_ns.bufferTimeMax = 10;
+			}
+			
 			var clientObject:Object = new Object();
 			clientObject.onMetaData = onMetaData;
 			_ns.client = clientObject;
@@ -535,7 +575,7 @@ package
 			{
 				_ns.play(_url);
 			}
-			trace('[connectStream] ' + ((new Date).getTime() - startTick) + ', time: ' + (new Date).getTime());
+			Utils.formatMsg('[connectStream] ' + ((new Date).getTime() - startTick) + ', time: ' + (new Date).getTime());
 		}
 		
 		private function renderInfoArea():void
